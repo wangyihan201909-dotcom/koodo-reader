@@ -10,8 +10,6 @@ import { loginList } from "../../constants/loginList";
 import {
   generateSyncRecord,
   getServerRegion,
-  getWebsiteLang,
-  getWebsiteUrl,
   handleAutoCloudSync,
   handleContextMenu,
   openInBrowser,
@@ -447,22 +445,6 @@ const Login = () => {
                   {t(
                     "7-day free trial upon registration, then billed $4.99 per Year"
                   )}
-                </div>
-                <div
-                  className="login-billing-info"
-                  style={{
-                    marginTop: "-25px",
-                    fontWeight: "bold",
-                    cursor: "pointer",
-                    textDecoration: "underline",
-                  }}
-                  onClick={() => {
-                    openInBrowser(
-                      getWebsiteUrl() + getWebsiteLang() + "/pricing"
-                    );
-                  }}
-                >
-                  {t("Compare Free and Pro features")}
                 </div>
                 <div
                   className="login-manual-token"

@@ -203,7 +203,10 @@ const PopupAssist = (props: PopupAssistProps) => {
       });
       handleQuoteText("");
     }
-    if (!state.aiService) {
+    if (
+      !state.aiService ||
+      (window.electronAPI && state.aiService === "official-ai-assistant-plugin")
+    ) {
       let pluginList = plugins.filter(
         (item) =>
           item.type === "assistant" && !item.key.startsWith("official-ai-")
@@ -224,6 +227,7 @@ const PopupAssist = (props: PopupAssistProps) => {
         );
       } else {
         mergeState({
+          aiService: "",
           isAddNew: true,
         });
       }

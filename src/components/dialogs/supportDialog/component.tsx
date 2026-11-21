@@ -4,21 +4,13 @@ import "./supportDialog.css";
 import { useAppStore } from "../../../store/useAppStore";
 import { Trans } from "react-i18next";
 import LazyLottie from "../../lazyLottie";
-import {
-  getServerRegion,
-  getWebsiteLang,
-  getWebsiteUrl,
-  handleContextMenu,
-  openInBrowser,
-} from "../../../utils/common";
+import { getServerRegion, handleContextMenu } from "../../../utils/common";
 import toast from "react-hot-toast";
 import { handleClearToken, handleExitApp } from "../../../utils/request/common";
 import {
   fetchUserInfo,
-  getTempToken,
   getUserRequest,
 } from "../../../utils/request/user";
-import TokenService from "../../../utils/storage/tokenService";
 import { proFeatures } from "../../../constants/loginList";
 
 export interface SupportDialogState {
@@ -349,42 +341,6 @@ const SupportDialog = () => {
                         loop={true}
                         style={{ height: 200, width: "100%" }}
                       />
-                    </div>
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "center",
-                        margin: 20,
-                      }}
-                    >
-                      <div
-                        className="new-version-open"
-                        onClick={async () => {
-                          toast.loading(t("Generating payment link"), {
-                            id: "generate-payment-link",
-                          });
-                          let response = await getTempToken();
-                          if (response.code === 200) {
-                            toast.dismiss("generate-payment-link");
-                            let tempToken = response.data.access_token;
-                            let deviceUuid =
-                              await TokenService.getFingerprint();
-                            openInBrowser(
-                              getWebsiteUrl() +
-                                getWebsiteLang() +
-                                "/pricing?temp_token=" +
-                                tempToken +
-                                "&device_uuid=" +
-                                deviceUuid
-                            );
-                          } else if (response.code === 401) {
-                            handleFetchAuthed();
-                          }
-                        }}
-                        style={{ fontWeight: "bold" }}
-                      >
-                        <Trans>Upgrade to Pro</Trans>
-                      </div>
                     </div>
                     <p
                       className="update-dialog-new-title"

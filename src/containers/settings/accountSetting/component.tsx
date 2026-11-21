@@ -19,9 +19,8 @@ import {
   KookitConfig,
   LoginHelper,
 } from "../../../assets/lib/kookit-extra-browser.min";
-import { loginList, proFeatures } from "../../../constants/loginList";
+import { loginList } from "../../../constants/loginList";
 import {
-  getTempToken,
   getUserRequest,
   loginRegister,
   resetUserRequest,
@@ -38,7 +37,6 @@ export interface SettingInfoState {
   redeemCode: string;
   loginConfig: any;
   settingLogin: string;
-  showLoginOptions: boolean;
   isSendingCode: boolean;
   countdown: number;
   serverRegion: string;
@@ -74,7 +72,6 @@ const AccountSetting = () => {
     redeemCode: "",
     isSendingCode: false,
     countdown: 0,
-    showLoginOptions: false,
     serverRegion: getServerRegion(),
   });
 
@@ -651,166 +648,94 @@ const AccountSetting = () => {
           </div>
         </div>
       )}
-      {!isAuthed && !state.showLoginOptions && (
-        <div className="pro-banner-container">
-          <div className="pro-banner">
-            <div className="pro-banner-overlay"></div>
-            <div className="pro-banner-content">
-              <div className="pro-banner-header">
-                <div className="pro-banner-title">
-                  <Trans>Pro version</Trans>
-                </div>
-                <div className="pro-banner-tabs">
-                  {(
-                    [
-                      { key: "yearly", label: "Yearly" },
-                      { key: "limited", label: "Limited offer" },
-                    ] as const
-                  ).map((item) => (
-                    <div
-                      key={item.key}
-                      className={
-                        item.key === "yearly"
-                          ? "pro-banner-tab active-pro-banner-tab"
-                          : "pro-banner-tab"
-                      }
-                    >
-                      <Trans>{item.label}</Trans>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="pro-banner-price">
-                <span className="pro-banner-price-value">
-                  <Trans>{"$4.99"}</Trans>
-                </span>
-                <span className="pro-banner-price-unit">
-                  {" / "}
-                  <Trans>{"Year"}</Trans>
-                </span>
-              </div>
-              <div className="pro-banner-features">
-                {proFeatures.map((item) => (
-                  <div key={item} className="pro-banner-feature-item">
-                    <span className="icon-check pro-banner-feature-icon"></span>
-                    <span>
-                      <Trans>{item}</Trans>
-                    </span>
-                  </div>
-                ))}
-              </div>
-              <div className="pro-banner-actions">
-                <div
-                  className="pro-banner-btn pro-banner-btn-login"
-                  onClick={() => {
-                    setPartialState({ showLoginOptions: true });
-                  }}
-                >
-                  <Trans>Register / Login</Trans>
-                </div>
-                <div
-                  className="pro-banner-btn pro-banner-btn-trial"
-                  onClick={() => {
-                    setPartialState({ showLoginOptions: true });
-                  }}
-                >
-                  <Trans>Start 7-day free trial</Trans>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-      {(isAuthed || state.showLoginOptions) && (
-        <div className="setting-dialog-new-title">
-          <div>
-            <Trans>
-              {isAuthed ? "Server region" : "Select server region"}
-            </Trans>
-            {ConfigService.getReaderConfig("lang").startsWith("zh") && (
-              <span
-                style={{
-                  textDecoration: "underline",
-                  marginLeft: "10px",
-                  cursor: "pointer",
-                  opacity: 0.7,
-                  fontSize: "13px",
-                  lineHeight: "16px",
-                }}
-                onClick={() => {
-                  openInBrowser(
-                    getWebsiteUrl() + getWebsiteLang() + "/server-region"
-                  );
-                }}
-              >
-                <Trans>Learn more</Trans>
-              </span>
-            )}
-          </div>
-          {isAuthed ? (
-            <div
-              className="lang-setting-option"
-              style={{ display: "flex", alignItems: "center" }}
-            >
-              <Trans>
-                {getServerRegion() === "china" ? "China" : "Global"}
-              </Trans>
-              <span
-                className="change-location-button"
-                style={{ marginLeft: "10px" }}
-                onClick={async () => {
-                  let result = await vexComfirmAsync(
-                    "We have two server regions(Global and China). To change the server region, you need to log out first. Do you want to log out now?"
-                  );
-                  if (result) {
-                    let newRegion =
-                      getServerRegion() === "china" ? "global" : "china";
-                    ConfigService.setItem("serverRegion", newRegion);
-                    resetReaderRequest();
-                    resetUserRequest();
-                    resetThirdpartyRequest();
-                    await handleLogout();
-                  }
-                }}
-              >
-                <Trans>Change</Trans>
-              </span>
-            </div>
-          ) : (
-            <select
-              name=""
-              className="lang-setting-dropdown"
-              value={state.serverRegion}
-              onChange={(event) => {
-                if (!event.target.value) {
-                  return;
-                }
-                ConfigService.setItem("serverRegion", event.target.value);
-                setPartialState({ serverRegion: event.target.value });
-                resetReaderRequest();
-                resetUserRequest();
-                resetThirdpartyRequest();
-                toast.success(t("Setup successful"));
+      <div className="setting-dialog-new-title">
+        <div>
+          <Trans>
+            {isAuthed ? "Server region" : "Select server region"}
+          </Trans>
+          {ConfigService.getReaderConfig("lang").startsWith("zh") && (
+            <span
+              style={{
+                textDecoration: "underline",
+                marginLeft: "10px",
+                cursor: "pointer",
+                opacity: 0.7,
+                fontSize: "13px",
+                lineHeight: "16px",
+              }}
+              onClick={() => {
+                openInBrowser(
+                  getWebsiteUrl() + getWebsiteLang() + "/server-region"
+                );
               }}
             >
-              {[
-                { value: "", label: "Please select" },
-                { value: "global", label: "Global" },
-                { value: "china", label: "China" },
-              ].map((item) => (
-                <option
-                  value={item.value}
-                  key={item.value}
-                  className="lang-setting-option"
-                >
-                  {t(item.label)}
-                </option>
-              ))}
-            </select>
+              <Trans>Learn more</Trans>
+            </span>
           )}
         </div>
-      )}
-      {!isAuthed && state.showLoginOptions && (
+        {isAuthed ? (
+          <div
+            className="lang-setting-option"
+            style={{ display: "flex", alignItems: "center" }}
+          >
+            <Trans>
+              {getServerRegion() === "china" ? "China" : "Global"}
+            </Trans>
+            <span
+              className="change-location-button"
+              style={{ marginLeft: "10px" }}
+              onClick={async () => {
+                let result = await vexComfirmAsync(
+                  "We have two server regions(Global and China). To change the server region, you need to log out first. Do you want to log out now?"
+                );
+                if (result) {
+                  let newRegion =
+                    getServerRegion() === "china" ? "global" : "china";
+                  ConfigService.setItem("serverRegion", newRegion);
+                  resetReaderRequest();
+                  resetUserRequest();
+                  resetThirdpartyRequest();
+                  await handleLogout();
+                }
+              }}
+            >
+              <Trans>Change</Trans>
+            </span>
+          </div>
+        ) : (
+          <select
+            name=""
+            className="lang-setting-dropdown"
+            value={state.serverRegion}
+            onChange={(event) => {
+              if (!event.target.value) {
+                return;
+              }
+              ConfigService.setItem("serverRegion", event.target.value);
+              setPartialState({ serverRegion: event.target.value });
+              resetReaderRequest();
+              resetUserRequest();
+              resetThirdpartyRequest();
+              toast.success(t("Setup successful"));
+            }}
+          >
+            {[
+              { value: "", label: "Please select" },
+              { value: "global", label: "Global" },
+              { value: "china", label: "China" },
+            ].map((item) => (
+              <option
+                value={item.value}
+                key={item.value}
+                className="lang-setting-option"
+              >
+                {t(item.label)}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
+      {!isAuthed && (
         <>
           <div className="setting-dialog-new-title">
             <Trans>Select login method</Trans>
@@ -838,7 +763,7 @@ const AccountSetting = () => {
           </div>
         </>
       )}
-      {!isAuthed && state.showLoginOptions && (
+      {!isAuthed && (
         <>
           <div
             className="account-login-tips"
@@ -849,21 +774,6 @@ const AccountSetting = () => {
             {t(
               "7-day free trial upon registration, then billed $4.99 per Year"
             )}
-          </div>
-          <div
-            className="account-login-tips"
-            onClick={() => {
-              openInBrowser(getWebsiteUrl() + getWebsiteLang() + "/pricing");
-            }}
-            style={{
-              marginTop: "10px",
-              fontWeight: "bold",
-              cursor: "pointer",
-              textDecoration: "underline",
-              opacity: 1,
-            }}
-          >
-            {t("Compare Free and Pro features")}
           </div>
         </>
       )}
@@ -1083,44 +993,6 @@ const AccountSetting = () => {
         }}
         className="setting-dialog-pro-button"
       >
-        <div
-          onClick={async () => {
-            if (!isAuthed) {
-              openInBrowser(getWebsiteUrl() + getWebsiteLang() + "/pricing");
-              return;
-            }
-            let response = await getTempToken();
-            if (response.code === 200) {
-              let tempToken = response.data.access_token;
-              let deviceUuid = await TokenService.getFingerprint();
-              openInBrowser(
-                getWebsiteUrl() +
-                  getWebsiteLang() +
-                  "/pricing?temp_token=" +
-                  tempToken +
-                  "&device_uuid=" +
-                  deviceUuid
-              );
-            } else if (response.code === 401) {
-              handleFetchAuthed();
-            }
-          }}
-          style={{
-            paddingLeft: "10px",
-            paddingRight: "10px",
-            fontWeight: "bold",
-            cursor: "pointer",
-          }}
-        >
-          <Trans>
-            {isAuthed && userInfo
-              ? userInfo.valid_until <
-                parseInt(new Date().getTime() / 1000 + "")
-                ? "Upgrade to Pro"
-                : "Renew Pro"
-              : "Upgrade to Pro"}
-          </Trans>
-        </div>
         <div
           onClick={async () => {
             if (!isAuthed) {

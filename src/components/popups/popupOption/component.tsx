@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useState } from "react";
 
 import "./popupOption.css";
 
@@ -27,6 +28,8 @@ import {
 import { createHighlight } from "../../../utils/reader/noteUtil";
 import { Tooltip } from "react-tooltip";
 import { useAppStore } from "../../../store/useAppStore";
+import ReaderResearchDialog from "../../research/readerDialog";
+import type { ResearchSource } from "../../research/types";
 
 export interface PopupOptionProps {
   noteKey: string;
@@ -34,6 +37,7 @@ export interface PopupOptionProps {
   cfiRange: string;
   chapterDocIndex: number;
   chapter: string;
+  researchSelection: string;
 }
 
 declare var window: any;
@@ -56,6 +60,23 @@ const PopupOption = (props: PopupOptionProps) => {
   const handleOriginalSentence = useAppStore((s) => s.handleOriginalSentence);
   const handleQuoteText = useAppStore((s) => s.handleQuoteText);
   const { t } = useTranslation();
+  const [researchSource, setResearchSource] = useState<ResearchSource | null>(null);
+  const handleResearch = () => {
+    const text = props.researchSelection;
+    if (!text || !htmlBook) return;
+    const rendition = htmlBook.rendition;
+    const location = isReadingRawPDF(currentBook)
+      ? rendition.getPositionByChapter(props.chapterDocIndex)
+      : rendition.getPosition();
+    setResearchSource({
+      kind: "book",
+      book_key: currentBook.key,
+      title: currentBook.name.slice(0, 300),
+      chapter: (props.chapter || location?.chapterTitle || "").slice(0, 1000),
+      content: text.slice(0, 12000),
+      position: location ? JSON.stringify(location) : null,
+    });
+  };
   const handleNote = () => {
     handleMenuMode("note");
     handleOpenMenu(true);
@@ -322,6 +343,17 @@ const PopupOption = (props: PopupOptionProps) => {
             ></span>
           </span>
         </div>
+        {window.electronAPI && ConfigService.getReaderConfig("isDisableAI") !== "yes" && (
+          <button
+            type="button"
+            className="research-popup-trigger"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={handleResearch}
+          >
+            {t("Research.reader")}
+          </button>
+        )}
+        {researchSource && <ReaderResearchDialog source={researchSource} onClose={() => setResearchSource(null)} />}
       </div>
   );
 };

@@ -17,7 +17,8 @@ const {
 } = require("electron");
 const path = require("path");
 const { pathToFileURL, fileURLToPath } = require("url");
-const isDev = require("electron-is-dev");
+const launchBuiltReader = process.argv.includes("--koodo-local-build");
+const isDev = require("electron-is-dev") && !launchBuiltReader;
 const Store = require("electron-store");
 const log = require("electron-log/main");
 const os = require("os");
@@ -34,6 +35,7 @@ const {
   extractTarByOffsets,
 } = require("./src/utils/main/tar-index");
 const { runPowerShellScript } = require("./src/utils/main/powershell-util");
+const { runResearchOperation } = require("./src/utils/main/research-agent");
 const {
   buildProxyUrl,
   checkCloudUrl,
@@ -814,6 +816,9 @@ const createMainWin = () => {
     }
   });
   ipcMain.handle("file-command", async (event, args) => runFileCommand(args));
+  ipcMain.handle("research-agent", (_event, operation, payload) =>
+    runResearchOperation(operation, payload)
+  );
   ipcMain.on("node-command-sync", (event, args) => {
     try {
       if (!args || typeof args.operation !== "string") {
@@ -2501,7 +2506,9 @@ app.on("open-file", (e, pathToFile) => {
   notifyOpenFiles();
 });
 // Register protocol handler
-app.setAsDefaultProtocolClient("koodo-reader");
+if (!launchBuiltReader) {
+  app.setAsDefaultProtocolClient("koodo-reader");
+}
 const serializeArg = (arg) => {
   if (arg === null) return "null";
   if (arg === undefined) return "undefined";

@@ -1,0 +1,188 @@
+.research-ui {
+  color: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.research-workspace {
+  position: absolute;
+  inset: 75px 0 0 200px;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: 24px clamp(16px, 4vw, 56px) 54px;
+}
+
+.research-layout {
+  max-width: 1120px;
+  margin-inline: auto;
+}
+
+.research-title, .research-topics, .research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 16px;
+}
+
+.research-title {
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.research-ui h1, .research-ui h2, .research-ui h3, .research-ui h4 {
+  margin: 0 0 0.5em;
+  line-height: 1.25;
+}
+
+.research-title > :is(h1, h2) {
+  margin: 0;
+}
+
+.research-ui h1 {
+  font-size: 28px;
+}
+
+.research-ui h2 {
+  font-size: 18px;
+}
+
+.research-topics {
+  margin: 20px 0;
+}
+
+.research-columns {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  align-items: start;
+}
+
+.research-card, .research-service {
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.research-compose form, .research-ui label, .research-service {
+  display: grid;
+  gap: 5px;
+}
+
+.research-compose form > :is(label, .research-actions) {
+  margin-top: 8px;
+}
+
+.research-ui :is(input, textarea, select, button), .research-popup-trigger {
+  box-sizing: border-box;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 5px 10px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+}
+
+.research-ui select option {
+  background: Canvas;
+  color: CanvasText;
+}
+
+.research-ui textarea {
+  resize: vertical;
+}
+
+.research-ui button, .research-popup-trigger {
+  cursor: pointer;
+}
+
+.research-ui button:disabled {
+  opacity: 0.54;
+  cursor: default;
+}
+
+.research-ui .research-primary {
+  background: #315e9a;
+  color: white;
+  border-color: transparent;
+}
+
+.research-ui button:focus-visible, .research-popup-trigger:focus-visible {
+  outline: 2px solid #558def;
+  outline-offset: 2px;
+}
+
+.research-note, .research-result {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+}
+
+.research-ui :is(.research-markdown, blockquote, code) {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.research-ui blockquote {
+  margin: 8px 0;
+  padding-inline-start: 10px;
+  border-inline-start: 2px solid color-mix(in srgb, currentColor 30%, transparent);
+}
+
+.research-ui :is(ul, ol) {
+  padding-inline-start: 21px;
+}
+
+.research-ui li {
+  margin-block: 7px;
+}
+
+.research-sources > li {
+  list-style: decimal;
+}
+
+.research-muted {
+  opacity: 0.82;
+  overflow-wrap: anywhere;
+}
+
+.research-popup-trigger {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-height: 28px;
+  font-size: 13px;
+  padding: 3px 8px;
+}
+
+.research-dialog {
+  width: min(650px, calc(100vw - 32px));
+  max-height: calc(100dvh - 36px);
+  box-sizing: border-box;
+  overflow: auto;
+  background: Canvas;
+  color: CanvasText;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.research-dialog:modal {
+  overscroll-behavior: contain;
+}
+
+.research-dialog::backdrop {
+  background: #0007;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 920px) {
+  .research-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

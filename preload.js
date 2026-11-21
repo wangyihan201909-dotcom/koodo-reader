@@ -44,6 +44,7 @@ const INVOKE_CHANNELS = new Set([
   "select-book",
   "custom-database-command",
   "database-command",
+  "research-agent",
   "close-database",
   "set-always-on-top",
   "set-auto-maximize",

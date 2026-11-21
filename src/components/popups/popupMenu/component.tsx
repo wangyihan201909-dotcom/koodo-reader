@@ -47,6 +47,7 @@ const PopupMenu = (props: PopupMenuProps) => {
   const handleFetchNotes = useAppStore((s) => s.handleFetchNotes);
   const { t } = useTranslation();
   const [rect, setRect] = useState(props.rect);
+  const [researchSelection, setResearchSelection] = useState("");
   const prevRectRef = useRef(props.rect);
 
   const showMenu = (menuRect: any = rect) => {
@@ -59,20 +60,24 @@ const PopupMenu = (props: PopupMenuProps) => {
 
   const getHtmlPosition = (menuRect: any) => {
     let pageSize = props.rendition.getPageSize(props.chapterDocIndex);
+    const menuHeight =
+      window.electronAPI && ConfigService.getReaderConfig("isDisableAI") !== "yes"
+        ? MENU_HEIGHT + 32
+        : MENU_HEIGHT;
     let posY = menuRect.bottom - pageSize.scrollTop;
     let posX = menuRect.left + menuRect.width / 2;
     if (menuRect.width > pageSize.sectionWidth && menuRect.left < 0) {
       posX = menuRect.left + menuRect.width;
     }
     if (
-      menuRect.top < MENU_HEIGHT &&
-      pageSize.height - menuRect.top - menuRect.height < MENU_HEIGHT &&
+      menuRect.top < menuHeight &&
+      pageSize.height - menuRect.top - menuRect.height < menuHeight &&
       readerMode !== "scroll"
     ) {
       handleChangeDirection(true);
       posY = menuRect.top + 16 + pageSize.top;
     } else if (
-      pageSize.height - menuRect.height < MENU_HEIGHT &&
+      pageSize.height - menuRect.height < menuHeight &&
       pageSize.height - menuRect.height > -10
     ) {
       handleChangeDirection(true);
@@ -82,11 +87,11 @@ const PopupMenu = (props: PopupMenuProps) => {
       readerMode === "scroll"
     ) {
       posY = 40;
-    } else if (posY < pageSize.height - MENU_HEIGHT + pageSize.top) {
+    } else if (posY < pageSize.height - menuHeight + pageSize.top) {
       handleChangeDirection(true);
       posY = posY + 16 + pageSize.top;
     } else {
-      posY = posY - menuRect.height - MENU_HEIGHT + pageSize.top;
+      posY = posY - menuRect.height - menuHeight + pageSize.top;
     }
     posX = posX - MENU_WIDTH / 2 + pageSize.left;
     if (
@@ -106,8 +111,8 @@ const PopupMenu = (props: PopupMenuProps) => {
     if (posY < 0) {
       posY = 16;
     }
-    if (posY > pageSize.height - MENU_HEIGHT) {
-      posY = pageSize.height - MENU_HEIGHT;
+    if (posY > pageSize.height - menuHeight) {
+      posY = pageSize.height - menuHeight;
     }
     if (
       readerMode === "scroll" &&
@@ -141,6 +146,8 @@ const PopupMenu = (props: PopupMenuProps) => {
         break;
       }
     }
+    // Focusing a control outside the book iframe can clear its selection.
+    setResearchSelection(window.electronAPI && sel && !sel.isCollapsed ? getSelection(currentBook) : "");
     handleChangeDirection(false);
     if (isOpenMenu) {
       handleMenuMode("");
@@ -258,6 +265,7 @@ const PopupMenu = (props: PopupMenuProps) => {
   const PopupProps = {
     chapterDocIndex: props.chapterDocIndex,
     chapter: props.chapter,
+    researchSelection,
   };
   const ColorProps = {
     handleDigest: handleDigest,

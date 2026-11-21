@@ -233,6 +233,7 @@ const Sidebar = () => {
 
   const renderSideMenu = () => {
     return sideMenu.map((item) => {
+      if (item.mode === "research" && !window.electronAPI) return null;
       const isDropTarget = isBookDropTarget(item.mode);
       return (
         <li
@@ -243,7 +244,14 @@ const Sidebar = () => {
               : "side-menu-item") +
             (state.dropTargetShelf === item.mode ? " shelf-drop-target" : "")
           }
-          id={`sidebar-${item.icon}`}
+          id={`sidebar-${item.mode === "research" ? item.mode : item.icon}`}
+          aria-label={item.mode === "research" ? t(item.name) : undefined}
+          title={item.mode === "research" ? t(item.name) : undefined}
+          role={item.mode === "research" ? "link" : undefined}
+          tabIndex={item.mode === "research" ? 0 : undefined}
+          onKeyDown={item.mode === "research" ? (event) => {
+            if (event.key === "Enter") handleSidebar(item.mode);
+          } : undefined}
           onClick={() => {
             handleSidebar(item.mode);
           }}

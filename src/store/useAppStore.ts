@@ -377,7 +377,10 @@ export const useAppStore = create<AppState>()((set, get) => {
     handleDetailDialog: (isDetailDialog: boolean) =>
       setManager({ isDetailDialog }),
     handleSetting: (isSettingOpen: boolean) => setManager({ isSettingOpen }),
-    handleSettingMode: (settingMode: string) => setManager({ settingMode }),
+    handleSettingMode: (settingMode: string) =>
+      setManager({
+        settingMode: window.electronAPI && settingMode === "account" ? "general" : settingMode,
+      }),
     handlePluginSettingTab: (pluginSettingTab: string) =>
       setManager({ pluginSettingTab }),
     handleShowPopupNote: (isShowPopupNote: boolean) =>
@@ -574,6 +577,7 @@ export const useAppStore = create<AppState>()((set, get) => {
       );
     },
     handleFetchUserInfo: async () => {
+      if (window.electronAPI) return null;
       let response = await fetchUserInfo();
       let userInfo: any = null;
       if (response.code === 200) {
@@ -779,20 +783,22 @@ export const useAppStore = create<AppState>()((set, get) => {
               ""
             );
             pluginList.push(transPlugin);
-            let sumPlugin = new PluginModel(
-              "official-ai-assistant-plugin",
-              "assistant",
-              "Official Assistant",
-              "assistant",
-              "1.0.0",
-              "",
-              {},
-              officialTranList,
-              [],
-              "",
-              ""
-            );
-            pluginList.push(sumPlugin);
+            if (!window.electronAPI) {
+              const sumPlugin = new PluginModel(
+                "official-ai-assistant-plugin",
+                "assistant",
+                "Official Assistant",
+                "assistant",
+                "1.0.0",
+                "",
+                {},
+                officialTranList,
+                [],
+                "",
+                ""
+              );
+              pluginList.push(sumPlugin);
+            }
           }
           const isAuthed = (await TokenService.getToken("is_authed")) === "yes";
           if (isAuthed && !ConfigService.getItem("serverRegion")) {

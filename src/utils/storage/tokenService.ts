@@ -35,6 +35,7 @@ export default class TokenService {
   }
 
   static async getToken(key: string): Promise<string | null> {
+    if (window.electronAPI && key === "is_authed") return null;
     const tokens = JSON.parse((await this.getAllToken()) || "{}");
     return tokens[key] || null;
   }

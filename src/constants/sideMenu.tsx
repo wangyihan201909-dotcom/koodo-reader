@@ -21,6 +21,11 @@ export const sideMenu = [
     mode: "highlight",
   },
   {
+    name: "Research.workspace",
+    icon: "search",
+    mode: "research",
+  },
+  {
     name: "Deleted Books",
     icon: "trash-line",
     mode: "trash",

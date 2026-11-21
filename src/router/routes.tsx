@@ -2,11 +2,13 @@
 import DeletedBookList from "../containers/lists/deletedBookList";
 import NoteList from "../containers/lists/noteList";
 import EmptyPage from "../containers/emptyPage";
+import ResearchWorkspacePage from "../components/research/workspace";
 
 export const routes = [
   { path: "empty", component: EmptyPage },
   { path: "note", component: NoteList },
   { path: "highlight", component: NoteList },
+  { path: "research", component: ResearchWorkspacePage },
   { path: "home", component: BookList },
   { path: "shelf", component: BookList },
   { path: "favorite", component: BookList },

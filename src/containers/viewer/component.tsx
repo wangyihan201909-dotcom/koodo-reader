@@ -753,6 +753,8 @@ const Viewer = (props: ViewerProps) => {
       }, 1000);
       return false;
     });
+    // The initial render can finish before the rendered listener is registered.
+    handleBindGesture();
     if (
       propsRef.current.currentBook.format === "TXT" &&
       rendition.format !== "CACHE"

@@ -1,5 +1,5 @@
 ﻿import { useEffect } from "react";
-import { Route, Routes, HashRouter } from "react-router-dom";
+import { Route, Routes, HashRouter, Navigate } from "react-router-dom";
 import { changeLanguage } from "../i18n";
 import { ConfigService } from "../assets/lib/kookit-extra-browser.min";
 import Manager from "../pages/manager";
@@ -146,7 +146,10 @@ const Router = () => {
     <HashRouter>
       <Routes>
         <Route element={<Manager />} path="/manager/*" />
-        <Route element={<Login />} path="/login" />
+        <Route
+          element={window.electronAPI ? <Navigate to="/manager/home" replace /> : <Login />}
+          path="/login"
+        />
         <Route element={<Stats />} path="/stats" />
         <Route element={<HtmlReader />} path="/epub/*" />
         <Route element={<HtmlReader />} path="/mobi/*" />

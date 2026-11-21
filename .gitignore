@@ -2,6 +2,8 @@
 
 # dependencies
 /node_modules
+/.venv/
+/research_agent/__pycache__/
 /.pnp
 .pnp.js
 

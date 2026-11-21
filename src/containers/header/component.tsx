@@ -44,8 +44,7 @@ import { driveList } from "../../constants/driveList";
 import SupportDialog from "../../components/dialogs/supportDialog";
 import { LocalFileManager } from "../../utils/file/localFile";
 import packageJson from "../../../package.json";
-import { getTempToken, updateUserConfig } from "../../utils/request/user";
-import i18n from "../../i18n";
+import { updateUserConfig } from "../../utils/request/user";
 import { getNotification } from "../../utils/request/common";
 import TokenService from "../../utils/storage/tokenService";
 import { useAppStore } from "../../store/useAppStore";
@@ -55,7 +54,6 @@ export interface HeaderProps {
 }
 
 export interface HeaderState {
-  isHidePro: boolean;
   isSync: boolean;
   notificationCount: number;
 }
@@ -97,7 +95,6 @@ const Header = (props: HeaderProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [state, setState] = useState<HeaderState>({
-    isHidePro: false,
     isSync: false,
     notificationCount: 0,
   });
@@ -591,10 +588,6 @@ const Header = (props: HeaderProps) => {
             ConfigService.getReaderConfig("storageLocation")
           );
         }
-        if (ConfigService.getReaderConfig("isHidePro") === "yes") {
-          setPartialState({ isHidePro: true });
-        }
-
         //Check for data update
         //upgrade data from old version
         let res1 = await upgradeStorage(handleFinishUpgrade);
@@ -855,7 +848,7 @@ const Header = (props: HeaderProps) => {
             ></span>
           </span>
         </div>
-        {!isAuthed && window.location.hostname !== "web.koodoreader.cn" && (
+        {!window.electronAPI && !isAuthed && window.location.hostname !== "web.koodoreader.cn" && (
           <div
             className="setting-icon-container"
             onClick={() => {
@@ -901,9 +894,13 @@ const Header = (props: HeaderProps) => {
               if (
                 ConfigService.getReaderConfig("isEnableKoReaderSync") !== "yes"
               ) {
-                toast(t("Please upgrade to Pro to use this feature"));
                 handleSetting(true);
-                handleSettingMode("account");
+                if (window.electronAPI) {
+                  handleSettingMode("data");
+                } else {
+                  toast(t("Please upgrade to Pro to use this feature"));
+                  handleSettingMode("account");
+                }
                 setIsSync(false);
               } else {
                 setIsSync(true);
@@ -929,118 +926,6 @@ const Header = (props: HeaderProps) => {
         </div>
       </div>
 
-      {!isAuthed &&
-      !state.isHidePro &&
-      window.location.hostname !== "web.koodoreader.cn" ? (
-        <div className="header-report-container">
-          <span
-            style={{ textDecoration: "underline" }}
-            onClick={() => {
-              if (
-                window.location.hostname !== "web.koodoreader.com" &&
-                !isElectron
-              ) {
-                handleSetting(true);
-                handleSettingMode("account");
-                return;
-              }
-              navigate("/login");
-            }}
-          >
-            <Trans>Pro version</Trans>
-            <span> </span>
-          </span>
-
-          <span
-            className="icon-close icon-pro-close"
-            onClick={() => {
-              ConfigService.setReaderConfig("isHidePro", "yes");
-              setPartialState({ isHidePro: true });
-            }}
-          ></span>
-        </div>
-      ) : null}
-      {isAuthed &&
-      userInfo &&
-      ((userInfo.type === "pro" &&
-        userInfo.valid_until < new Date().getTime() / 1000 + 30 * 24 * 3600) ||
-        (userInfo.type === "trial" &&
-          userInfo.valid_until <
-            new Date().getTime() / 1000 + 3 * 24 * 3600)) ? (
-        <div className="header-report-container">
-          <span
-            data-tooltip-id="my-tooltip"
-            data-tooltip-content={i18n.t("Your trial will expire in", {
-              ttl: Math.ceil(
-                (userInfo.valid_until - new Date().getTime() / 1000) /
-                  (24 * 3600)
-              ),
-            })}
-          >
-            <span
-              style={{ textDecoration: "underline" }}
-              onClick={async () => {
-                let response = await getTempToken();
-                if (response.code === 200) {
-                  let tempToken = response.data.access_token;
-                  let deviceUuid = await TokenService.getFingerprint();
-                  openInBrowser(
-                    getWebsiteUrl() +
-                      getWebsiteLang() +
-                      "/pricing?temp_token=" +
-                      tempToken +
-                      "&device_uuid=" +
-                      deviceUuid
-                  );
-                } else if (response.code === 401) {
-                  handleFetchAuthed();
-                }
-              }}
-            >
-              <Trans>Renew Pro</Trans>
-            </span>
-          </span>
-        </div>
-      ) : null}
-      {isAuthed &&
-      userInfo &&
-      userInfo.type === "trial" &&
-      userInfo.valid_until > new Date().getTime() / 1000 + 3 * 24 * 3600 ? (
-        <div className="header-report-container" style={{ right: "200px" }}>
-          <span
-            data-tooltip-id="my-tooltip"
-            data-tooltip-content={i18n.t("Your trial will expire in", {
-              ttl: Math.ceil(
-                (userInfo.valid_until - new Date().getTime() / 1000) /
-                  (24 * 3600)
-              ),
-            })}
-          >
-            <span
-              style={{ textDecoration: "underline" }}
-              onClick={async () => {
-                let response = await getTempToken();
-                if (response.code === 200) {
-                  let tempToken = response.data.access_token;
-                  let deviceUuid = await TokenService.getFingerprint();
-                  openInBrowser(
-                    getWebsiteUrl() +
-                      getWebsiteLang() +
-                      "/pricing?temp_token=" +
-                      tempToken +
-                      "&device_uuid=" +
-                      deviceUuid
-                  );
-                } else if (response.code === 401) {
-                  handleFetchAuthed();
-                }
-              }}
-            >
-              <Trans>In trial</Trans>
-            </span>
-          </span>
-        </div>
-      ) : null}
       {KookitConfig.CloudMode !== "production" ? (
         <div className="header-report-container" style={{ right: "300px" }}>
           <span
