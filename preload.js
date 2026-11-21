@@ -45,6 +45,9 @@ const INVOKE_CHANNELS = new Set([
   "custom-database-command",
   "database-command",
   "research-agent",
+  "research-agent-chat",
+  "research-agent-abort",
+  "research-agent-reset",
   "close-database",
   "set-always-on-top",
   "set-auto-maximize",
@@ -98,6 +101,7 @@ const SEND_CHANNELS = new Set([
   "reader-close-ready",
   "tab-close-ready",
   "reader-mouse-watch",
+  "research-tool-result",
 ]);
 const SEND_SYNC_CHANNELS = new Set([
   "storage-location",
@@ -124,6 +128,8 @@ const EVENT_CHANNELS = new Set([
   "download-app-progress",
   "backup-progress",
   "restore-progress",
+  "research-agent-event",
+  "research-tool-call",
 ]);
 
 const assertChannel = (set, channel) => {

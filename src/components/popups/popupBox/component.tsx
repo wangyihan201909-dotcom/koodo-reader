@@ -224,7 +224,7 @@ const PopupBox = (props: PopupBoxProps) => {
       };
       isDragging.current = true;
       wasDocked.current = true;
-      handleMenuMode("assistant");
+      handleMenuMode(window.electronAPI ? mode : "assistant");
       handleOpenMenu(true);
       updateState({
         isDockedRight: false,

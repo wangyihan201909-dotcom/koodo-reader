@@ -105,6 +105,11 @@
   color: #0aa89e;
   font-size: 20px;
 }
+button.assistant-option {
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
 .wikipedia-icon {
   font-size: 18px;
   opacity: 0.83;

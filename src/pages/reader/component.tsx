@@ -31,6 +31,8 @@ import {
 } from "../../utils/reader/discordRPC";
 import SupportDialog from "../../components/dialogs/supportDialog";
 import ReaderTopToolbar from "../../components/readerTopToolbar";
+import ReaderResearchDialog from "../../components/research/readerDialog";
+import type { ResearchSource } from "../../components/research/types";
 import { READING_PANEL_TOGGLE_EVENT } from "../../utils/reader/mouseEvent";
 import {
   getAutoReaderMode,
@@ -153,6 +155,7 @@ const Reader = () => {
     handleBackgroundColor,
   };
   const propsRef = useLatest(currentProps);
+  const [askAi, setAskAi] = useState<{ source?: ResearchSource } | null>(null);
   const [state, setState] = useState<ReaderState>({
     hoverPanel: "",
     isOpenLeftPanel: isNavLocked,
@@ -693,10 +696,12 @@ const Reader = () => {
   const isMergeWord = ConfigService.getReaderConfig("isMergeWord") === "yes";
   const isUndockedPopupBoxOpen =
     !isDockedRight && isOpenMenu && POPUP_BOX_MODES.includes(menuMode);
+  const openAskAi = (source?: ResearchSource) => setAskAi({ source });
   const renditionProps = {
     handleLeaveReader: handleLeaveReader,
     handleEnterReader: handleEnterReader,
     isShow: state.isOpenLeftPanel || state.isOpenRightPanel,
+    onAskAi: openAskAi,
   };
   return (
     <div
@@ -718,7 +723,11 @@ const Reader = () => {
         handleDialogButtonHover={handleDialogButtonHover}
         handleAnnotationClick={handleAnnotationClick}
         handleEnterReader={handleEnterReader}
+        onAskAi={openAskAi}
       />
+      {askAi && (
+        <ReaderResearchDialog source={askAi.source} onClose={() => setAskAi(null)} />
+      )}
 
       <ReaderBottomToolbar
         isNearEdge={state.isNearEdge && !isUndockedPopupBoxOpen}

@@ -32,6 +32,7 @@ export interface ReaderTopToolbarProps {
   };
   handleAnnotationClick: () => void;
   handleEnterReader: (position: string) => void;
+  onAskAi: () => void;
 }
 
 declare var window: any;
@@ -487,12 +488,17 @@ const ReaderTopToolbar = (props: ReaderTopToolbarProps) => {
             ></span>
           </div>
           {ConfigService.getReaderConfig("isDisableAI") !== "yes" && (
-            <div
-              className="reader-setting-icon-container"
-              aria-label={t("Reading Assistant")}
+            <button
+              type="button"
+              className="reader-setting-icon-container reader-ask-ai"
+              aria-label={t(window.electronAPI ? "Ask AI" : "Reading Assistant")}
               data-tooltip-id="my-tooltip"
-              data-tooltip-content={t("Reading Assistant")}
+              data-tooltip-content={t(window.electronAPI ? "Ask AI" : "Reading Assistant")}
               onClick={async () => {
+                if (window.electronAPI) {
+                  props.onAskAi();
+                  return;
+                }
                 if (!htmlBook) return;
                 handleMenuMode("assistant");
                 handleOriginalText(await htmlBook.rendition.chapterText());
@@ -503,7 +509,7 @@ const ReaderTopToolbar = (props: ReaderTopToolbarProps) => {
                 className={`icon-star-line reader-setting-icon`}
                 style={{ fontSize: 20 }}
               ></span>
-            </div>
+            </button>
           )}
           <div
             className="reader-setting-icon-container"

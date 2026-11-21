@@ -35,7 +35,18 @@ const {
   extractTarByOffsets,
 } = require("./src/utils/main/tar-index");
 const { runPowerShellScript } = require("./src/utils/main/powershell-util");
-const { runResearchOperation } = require("./src/utils/main/research-agent");
+const {
+  runResearchOperation,
+  startResearchServices,
+  stopResearchServices,
+} = require("./src/utils/main/research-agent");
+const {
+  runPiResearchChat,
+  abortPiResearchChat,
+  resetPiResearchChat,
+  handlePiResearchToolResult,
+  disposeAllPiResearchSessions,
+} = require("./src/utils/main/pi-research-agent");
 const {
   buildProxyUrl,
   checkCloudUrl,
@@ -819,6 +830,18 @@ const createMainWin = () => {
   ipcMain.handle("research-agent", (_event, operation, payload) =>
     runResearchOperation(operation, payload)
   );
+  ipcMain.handle("research-agent-chat", (event, request) =>
+    runPiResearchChat(event.sender, request)
+  );
+  ipcMain.handle("research-agent-abort", (_event, request) =>
+    abortPiResearchChat(request)
+  );
+  ipcMain.handle("research-agent-reset", (_event, request) =>
+    resetPiResearchChat(request)
+  );
+  ipcMain.on("research-tool-result", (_event, payload) => {
+    handlePiResearchToolResult(payload);
+  });
   ipcMain.on("node-command-sync", (event, args) => {
     try {
       if (!args || typeof args.operation !== "string") {
@@ -2493,10 +2516,19 @@ app.on("ready", async () => {
   await applyProxyToSession();
   applyNativeThemeSource(store.get("appSkin"));
   createMainWin();
+  if (singleInstance) {
+    void startResearchServices();
+  }
 });
 app.on("before-quit", () => {
   isQuitting = true;
+  disposeAllPiResearchSessions();
+  stopResearchServices();
   destroyDiscordRPC();
+});
+app.on("will-quit", () => {
+  disposeAllPiResearchSessions();
+  stopResearchServices();
 });
 app.on("window-all-closed", () => {
   app.quit();

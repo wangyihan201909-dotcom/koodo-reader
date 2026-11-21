@@ -18,6 +18,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.564.0",
+    "@earendil-works/pi-agent-core": "^1.6.0",
+    "@earendil-works/pi-ai": "^1.6.0",
     "@mozilla/readability": "^0.6.0",
     "@web-ppt/core": "0.4.5",
     "axios": "0.31.1",

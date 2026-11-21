@@ -149,7 +149,7 @@ const initialReader = {
   isSpeechAutoStart: false,
   isNavLocked: ConfigService.getReaderConfig("isNavLocked") === "yes",
   isSettingLocked: ConfigService.getReaderConfig("isSettingLocked") === "yes",
-  isDockedRight: ConfigService.getReaderConfig("isDockedRight") === "yes",
+  isDockedRight: !window.electronAPI && ConfigService.getReaderConfig("isDockedRight") === "yes",
   isHideFooter: ConfigService.getReaderConfig("isHideFooter") === "yes",
   isHideHeader: ConfigService.getReaderConfig("isHideHeader") === "yes",
   isHideBackground: ConfigService.getReaderConfig("isHideBackground") === "yes",

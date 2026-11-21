@@ -15,6 +15,7 @@ import {
 } from "../../../utils/reader/mouseEvent";
 import { createHighlight } from "../../../utils/reader/noteUtil";
 import { useAppStore } from "../../../store/useAppStore";
+import type { ResearchSource } from "../../research/types";
 
 export interface PopupMenuProps {
   rendition: any;
@@ -23,6 +24,7 @@ export interface PopupMenuProps {
 
   chapterDocIndex: number;
   chapter: string;
+  onAskAi: (source?: ResearchSource) => void;
 }
 
 declare var window: any;
@@ -60,24 +62,20 @@ const PopupMenu = (props: PopupMenuProps) => {
 
   const getHtmlPosition = (menuRect: any) => {
     let pageSize = props.rendition.getPageSize(props.chapterDocIndex);
-    const menuHeight =
-      window.electronAPI && ConfigService.getReaderConfig("isDisableAI") !== "yes"
-        ? MENU_HEIGHT + 32
-        : MENU_HEIGHT;
     let posY = menuRect.bottom - pageSize.scrollTop;
     let posX = menuRect.left + menuRect.width / 2;
     if (menuRect.width > pageSize.sectionWidth && menuRect.left < 0) {
       posX = menuRect.left + menuRect.width;
     }
     if (
-      menuRect.top < menuHeight &&
-      pageSize.height - menuRect.top - menuRect.height < menuHeight &&
+      menuRect.top < MENU_HEIGHT &&
+      pageSize.height - menuRect.top - menuRect.height < MENU_HEIGHT &&
       readerMode !== "scroll"
     ) {
       handleChangeDirection(true);
       posY = menuRect.top + 16 + pageSize.top;
     } else if (
-      pageSize.height - menuRect.height < menuHeight &&
+      pageSize.height - menuRect.height < MENU_HEIGHT &&
       pageSize.height - menuRect.height > -10
     ) {
       handleChangeDirection(true);
@@ -87,11 +85,11 @@ const PopupMenu = (props: PopupMenuProps) => {
       readerMode === "scroll"
     ) {
       posY = 40;
-    } else if (posY < pageSize.height - menuHeight + pageSize.top) {
+    } else if (posY < pageSize.height - MENU_HEIGHT + pageSize.top) {
       handleChangeDirection(true);
       posY = posY + 16 + pageSize.top;
     } else {
-      posY = posY - menuRect.height - menuHeight + pageSize.top;
+      posY = posY - menuRect.height - MENU_HEIGHT + pageSize.top;
     }
     posX = posX - MENU_WIDTH / 2 + pageSize.left;
     if (
@@ -111,8 +109,8 @@ const PopupMenu = (props: PopupMenuProps) => {
     if (posY < 0) {
       posY = 16;
     }
-    if (posY > pageSize.height - menuHeight) {
-      posY = pageSize.height - menuHeight;
+    if (posY > pageSize.height - MENU_HEIGHT) {
+      posY = pageSize.height - MENU_HEIGHT;
     }
     if (
       readerMode === "scroll" &&
@@ -266,6 +264,7 @@ const PopupMenu = (props: PopupMenuProps) => {
     chapterDocIndex: props.chapterDocIndex,
     chapter: props.chapter,
     researchSelection,
+    onAskAi: props.onAskAi,
   };
   const ColorProps = {
     handleDigest: handleDigest,

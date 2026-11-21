@@ -1,8 +1,8 @@
-# Koodo 科研工作区
+# Koodo 问 AI 与知识库
 
-桌面版直接进入本地书库，本地阅读和科研工作区无需 Koodo 账号或试用。打开侧栏的 **研究工作区** 开始检索。在 EPUB 中划词后，从原有划词菜单打开 **AI 科研**，可以提问、解释选区或检索来源。保存回答会生成包含问题、正文、概念和出处的研究笔记，可在保存时选择主题。已保存笔记中的书籍引用可返回当时的阅读位置。
+桌面版直接进入本地书库，阅读和知识库无需 Koodo 账号或试用。从阅读器工具栏或划词菜单打开 **问 AI**，可以直接提问、解释选区，或在本地资料和互联网上查找来源。在书库侧栏打开 **知识库** 也能查资料。保存回答时可以选择分类，笔记会保留问题、正文、概念和出处，书籍引用可以返回当时的阅读位置。
 
-工作区支持把 Koodo 书库里的书籍和论文加入主题。在笔记里点 **推荐关联**，可以检查 AI 建议的关联和理由，点 **确认关联** 后，两条笔记都能看到这条链接。
+在知识库中可以编辑笔记正文、移动分类，也可以把书库里的书籍和论文加入分类。打开一条笔记，使用 **关联已有笔记** 手动建立连接，或使用 **让 AI 推荐关联** 检查候选笔记及理由。确认关联后，两条笔记都能访问对方。
 
 ## 1. 安装本地服务与 Qwen 模型
 
@@ -35,9 +35,22 @@ sag api key create --name koodo-research
 
 书籍可保留在原文件夹。只把书加入主题会建立书库引用。跨文献检索覆盖你在 SAG-Wiki 添加并在下节指定的目录，以及工作区导出的笔记目录。扫描版 PDF 的覆盖范围取决于 SAG-Wiki 的 OCR 和索引状态。SAG 返回的 PDF 行号对应转换后的文本。
 
-## 3. 配置并启动
+## 3. 配置与启动
 
-在运行研究服务的终端设置环境变量。把示例地址和模型名换成自己的 OpenAI 兼容服务，粘贴 Key 时用 `Read-Host -MaskInput`。
+桌面版启动后会自动在后台拉起本地研究服务（`.venv` 中的 `research_agent`），并在退出软件时自动关闭，无需手动另开终端运行命令。若本机已有外部手动运行的研究服务，桌面版会自动复用而不重复启动。
+
+- **回答模型**：直接复用 Koodo **设置 → AI 服务** 中配置的模型（优先使用「AI 辅助模型」，未分配时自动回退到其他已添加模型），无需额外配置环境变量。
+- **可选扩展配置（SAG-Wiki / Brave Search）**：可保存在 `~/.koodo-research/config.json`（或通过同名环境变量覆盖）。配置 `KOODO_SAG_API_KEY` 且本机安装了 `sag` CLI 时，软件启动后也会自动在后台尝试拉起本地 `sag api start`（可通过 `KOODO_SAG_AUTO_START: false` 关闭；若 SAG-Wiki 桌面版已在监听对应端口则直接复用）。
+
+```json
+{
+  "KOODO_SAG_API_KEY": "你的 SAG-Wiki HTTP API Key",
+  "KOODO_SAG_PATHS": ["D:\\资料\\科研文献"],
+  "KOODO_BRAVE_API_KEY": "可选：Brave Search API Key"
+}
+```
+
+若需要手动单独调试研究服务，也可在终端设置环境变量后启动：
 
 ```powershell
 $env:KOODO_MODEL_BASE_URL = 'http://127.0.0.1:11434/v1'
@@ -69,13 +82,13 @@ node scripts/patch-nan.js
 npx.cmd -y yarn@1.22.22 dev
 ```
 
-在工作区点 **检查服务** 可查看配置。**只检索来源** 可独立使用本地检索和精排。**向 AI 提问** 和 **推荐关联** 需要回答模型。选择联网时将查询发送给 Brave。使用 AI 回答时将问题和引用摘录发送给配置的回答模型，关联推荐会将参与比对的笔记摘录发送给该模型。把回答模型地址设为本机服务即可让回答也在本机运行。
+在知识库点 **检查服务** 可查看配置。**只看来源** 可独立使用本地检索和精排。**问 AI**、**查找并回答** 和 **让 AI 推荐关联** 需要回答模型。选择联网时将查询发送给 Brave。使用 AI 回答时将问题和引用摘录发送给配置的回答模型，关联推荐会将参与比对的笔记摘录发送给该模型。把回答模型地址设为本机服务即可让回答也在本机运行。
 
 ## 本地检索与数据
 
-- **快速检索** 使用 SAG-Wiki 的本地全文索引，返回最多 8 个原始段落。
-- **本地语义精排** 先通过 SAG-Wiki 快速搜索召回最多 24 个段落，再用本机 Qwen3-Reranker-0.6B 对查询与候选段落评分，返回最多 8 个段落。召回范围由 SAG 的索引和查询匹配决定。
-- 笔记、引用、主题和关联存放于 `~/.koodo-research/knowledge.sqlite3`。每条笔记同时导出 Markdown 到 `~/.koodo-research/notes`，供 SAG-Wiki 检索。若设置 `KOODO_RESEARCH_DATA_DIR`，在两个终端都设为同一绝对目录，并把其中的 `notes` 子目录加入 SAG-Wiki。
+- **本地资料** 使用 SAG-Wiki 的本地全文索引，返回最多 8 个原始段落。
+- **本地资料（语义精排）** 先通过 SAG-Wiki 快速搜索召回最多 24 个段落，再用本机 Qwen3-Reranker-0.6B 对查询与候选段落评分，返回最多 8 个段落。召回范围由 SAG 的索引和查询匹配决定。
+- 笔记、引用、分类和关联存放于 `~/.koodo-research/knowledge.sqlite3`。每条笔记同时导出 Markdown 到 `~/.koodo-research/notes`，供 SAG-Wiki 检索。若设置 `KOODO_RESEARCH_DATA_DIR`，在两个终端都设为同一绝对目录，并把其中的 `notes` 子目录加入 SAG-Wiki。
 - EPUB 书内引用记录选区原文、章节和 Koodo 阅读位置。SAG 引用记录文件和转换文本行号，网页引用保留链接和当时的摘录。
 
 相关文档见 [SAG-Wiki HTTP API](https://github.com/Zleap-AI/SAG-Wiki/blob/main/docs/en/cli-http-api.md)、[Qwen 官方模型卡](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B)和 [Brave Search API](https://api-dashboard.search.brave.com/app/documentation/web-search/get-started)。

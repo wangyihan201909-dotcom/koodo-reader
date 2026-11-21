@@ -1,11 +1,13 @@
+import html
 import hmac
 import json
 import os
+import re
 import secrets
 import sqlite3
 from pathlib import Path
 from typing import Annotated, Literal
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from uuid import UUID, uuid4
 
 import httpx
@@ -38,14 +40,16 @@ knowledge = Knowledge(directory)
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=300)]
 Excerpt = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=12000)]
+NoteBody = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50000)]
 Mode = Literal["selection", "fast", "rerank", "web"]
 
 
 class Source(BaseModel):
-    kind: Literal["book", "sag", "web"]
+    kind: Literal["book", "sag", "web", "note"]
     title: ShortText
     content: Excerpt
     book_key: ShortText | None = None
+    note_id: str | None = Field(default=None, max_length=100)
     chapter: str | None = Field(default=None, max_length=1000)
     position: str | None = Field(default=None, max_length=20000)
     path: str | None = Field(default=None, max_length=4096)
@@ -59,11 +63,27 @@ class Search(BaseModel):
     mode: Literal["fast", "rerank", "web"]
 
 
+class NoteSearch(BaseModel):
+    query: Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)] = ""
+    limit: int = Field(default=8, ge=1, le=20)
+
+
+class AnswerModel(BaseModel):
+    base_url: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2048)]
+    model: ShortText
+    api_key: Annotated[str, StringConstraints(strip_whitespace=True, max_length=4096)] = ""
+
+
+class StatusQuery(BaseModel):
+    answer_model: AnswerModel | None = None
+
+
 class Ask(BaseModel):
     question: Text
     mode: Mode = "selection"
     selection: Source | None = None
     language: Literal["zh", "en"] = "en"
+    answer_model: AnswerModel | None = None
 
 
 class Topic(BaseModel):
@@ -80,25 +100,29 @@ class TopicBook(BaseModel):
     title: ShortText
 
 
-class NoteDraft(BaseModel):
+class NoteEdit(BaseModel):
     id: UUID
     topic_id: UUID | None = None
     title: ShortText
+    markdown: NoteBody
+
+
+class NoteDraft(NoteEdit):
     question: Text
-    markdown: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=50000)]
-    sources: list[Source] = Field(max_length=9)
+    sources: list[Source] = Field(max_length=16)
     concepts: list[ShortText] = Field(default_factory=list, max_length=8)
 
 
 class NoteSelection(BaseModel):
     id: UUID
     language: Literal["zh", "en"] = "en"
+    answer_model: AnswerModel | None = None
 
 
 class Link(BaseModel):
     first_id: UUID
     second_id: UUID
-    reason: ShortText
+    reason: Annotated[str, StringConstraints(strip_whitespace=True, max_length=300)] = ""
 
 
 def authorized(authorization: Annotated[str | None, Header()] = None):
@@ -146,16 +170,37 @@ def sag_request():
     return base.rstrip("/"), bearer(key)
 
 
-def model_config():
-    base = setting("KOODO_MODEL_BASE_URL")
+def normalize_model_base(url):
+    cleaned = url.strip().rstrip("/")
+    if cleaned.endswith("/chat/completions"):
+        cleaned = cleaned[: -len("/chat/completions")].rstrip("/")
+    parsed = urlsplit(cleaned)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return cleaned
+
+
+def resolve_model(override: AnswerModel | None = None):
+    if override is not None:
+        base = normalize_model_base(override.base_url)
+        if base and override.model:
+            return base, override.model, bearer(override.api_key)
+    base = normalize_model_base(setting("KOODO_MODEL_BASE_URL"))
     model = setting("KOODO_MODEL_NAME")
-    if not base or not model:
+    if base and model:
+        return base, model, bearer(setting("KOODO_MODEL_API_KEY"))
+    return None
+
+
+def model_config(override: AnswerModel | None = None):
+    resolved = resolve_model(override)
+    if resolved is None:
         raise HTTPException(503, "MODEL_NOT_CONFIGURED")
-    return base.rstrip("/"), model, bearer(setting("KOODO_MODEL_API_KEY"))
+    return resolved
 
 
-async def complete(instruction, context):
-    base, model, headers = model_config()
+async def complete(instruction, context, override: AnswerModel | None = None):
+    base, model, headers = model_config(override)
     data = await provider("MODEL", "POST", f"{base}/chat/completions", headers=headers, json={
         "model": model,
         "messages": [
@@ -173,13 +218,57 @@ async def complete(instruction, context):
 
 
 def structured(text):
-    if text.startswith("```") and text.endswith("```"):
-        text = text.partition("\n")[2].rsplit("```", 1)[0]
+    cleaned = text.strip()
+    if cleaned.startswith("<think>") and "</think>" in cleaned:
+        cleaned = cleaned.split("</think>", 1)[1].strip()
+    if cleaned.startswith("```") and cleaned.endswith("```"):
+        cleaned = cleaned.partition("\n")[2].rsplit("```", 1)[0].strip()
     try:
-        value = json.loads(text)
+        value = json.loads(cleaned)
         return value if isinstance(value, dict) else {}
     except ValueError:
         return {}
+
+
+async def wikipedia_search(question: str):
+    lang = "zh" if re.search(r"[\u4e00-\u9fff]", question) else "en"
+    api_url = f"https://{lang}.wikipedia.org/w/api.php"
+    try:
+        try:
+            client = httpx.AsyncClient(timeout=15)
+        except ImportError:
+            client = httpx.AsyncClient(timeout=15, trust_env=False)
+        async with client:
+            response = await client.get(
+                api_url,
+                headers={"User-Agent": "KoodoLocalReader/1.0 (local research assistant)"},
+                params={
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": question[:300],
+                    "srlimit": 6,
+                    "utf8": "1",
+                    "format": "json",
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+    except (httpx.HTTPError, ValueError, RuntimeError) as error:
+        raise HTTPException(503, "WEB_NOT_CONFIGURED") from error
+    results = []
+    for row in data.get("query", {}).get("search", [])[:6]:
+        title = str(row.get("title") or "").strip()
+        snippet = html.unescape(re.sub(r"<[^>]+>", "", str(row.get("snippet") or ""))).strip()
+        if title and snippet:
+            results.append(
+                Source(
+                    kind="web",
+                    title=title[:300],
+                    url=f"https://{lang}.wikipedia.org/wiki/{quote(title.replace(' ', '_'))}",
+                    content=snippet[:12000],
+                )
+            )
+    return results
 
 
 async def retrieve(question, mode):
@@ -188,7 +277,7 @@ async def retrieve(question, mode):
     if mode == "web":
         key = setting("KOODO_BRAVE_API_KEY")
         if not key:
-            raise HTTPException(503, "WEB_NOT_CONFIGURED")
+            return await wikipedia_search(question), False
         data = await provider(
             "WEB", "GET", "https://api.search.brave.com/res/v1/web/search",
             headers={"X-Subscription-Token": key},
@@ -237,8 +326,13 @@ async def retrieve(question, mode):
     return sources, data.get("truncated") is True
 
 
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+
 @app.post("/status")
-async def status():
+async def status(query: StatusQuery | None = None):
     sag_error = None
     if setting("KOODO_SAG_API_KEY"):
         base, headers = sag_request()
@@ -247,7 +341,7 @@ async def status():
         except HTTPException as error:
             sag_error = error.detail
     return {
-        "model": bool(setting("KOODO_MODEL_BASE_URL") and setting("KOODO_MODEL_NAME")),
+        "model": resolve_model(query.answer_model if query else None) is not None,
         "web": bool(setting("KOODO_BRAVE_API_KEY")),
         "sag": bool(setting("KOODO_SAG_API_KEY")) and sag_error is None,
         "sag_error": sag_error,
@@ -262,9 +356,14 @@ async def search(query: Search):
     return {"sources": sources, "truncated": truncated}
 
 
+@app.post("/search-notes")
+def search_notes(query: NoteSearch):
+    return {"notes": knowledge.search_notes(query.query, query.limit)}
+
+
 @app.post("/ask")
 async def ask(query: Ask):
-    model_config()
+    model_config(query.answer_model)
     sources, truncated = await retrieve(query.question, query.mode)
     if query.selection:
         sources.insert(0, query.selection)
@@ -279,6 +378,7 @@ async def ask(query: Ask):
             {"number": index, "title": source.title, "excerpt": source.content}
             for index, source in enumerate(sources, 1)
         ]},
+        query.answer_model,
     )
     result = structured(text)
     title = result.get("title")
@@ -329,6 +429,19 @@ def save_note(note: NoteDraft):
         raise HTTPException(503, "MARKDOWN_EXPORT_FAILED") from error
 
 
+@app.post("/edit-note")
+def edit_note(edit: NoteEdit):
+    try:
+        note = knowledge.edit(edit.model_dump(mode="json"))
+    except sqlite3.IntegrityError as error:
+        raise HTTPException(404, "TOPIC_MISSING") from error
+    except OSError as error:
+        raise HTTPException(503, "MARKDOWN_EXPORT_FAILED") from error
+    if note is None:
+        raise HTTPException(404, "NOTE_MISSING")
+    return note
+
+
 @app.post("/suggest")
 async def suggest(query: NoteSelection):
     note_id = str(query.id)
@@ -357,6 +470,7 @@ async def suggest(query: NoteSelection):
         f"Return JSON with a suggestions array of objects with id and a brief reason in {language}. "
         "Use candidate IDs only. Return an empty array if no relationship is meaningful.",
         {"note": summary(note), "candidates": [summary(candidate) for candidate in candidates]},
+        query.answer_model,
     )
     suggestions = structured(text).get("suggestions")
     if not isinstance(suggestions, list):

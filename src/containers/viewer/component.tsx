@@ -63,6 +63,7 @@ import { getBuiltinEngineOcrWorker } from "../../utils/reader/builtinOcrUtil";
 import { resolveStoredPlugin } from "../../utils/plugins/records";
 import type { PluginConfig } from "../../utils/plugins/types";
 import { useAppStore } from "../../store/useAppStore";
+import type { ResearchSource } from "../../components/research/types";
 
 import BookModel from "../../models/Book";
 
@@ -74,6 +75,7 @@ export interface ViewerProps {
 
   handleLeaveReader: (position: string) => void;
   handleEnterReader: (position: string) => void;
+  onAskAi: (source?: ResearchSource) => void;
 }
 
 export interface ViewerState {
@@ -898,7 +900,7 @@ const Viewer = (props: ViewerProps) => {
       )
     );
     // 刷新页面后，若 popupBox 处于固定右侧状态，自动恢复显示 popupAssist
-    if (propsRef.current.isDockedRight) {
+    if (propsRef.current.isDockedRight && !window.electronAPI) {
       propsRef.current.handleMenuMode("assistant");
       propsRef.current.handleOpenMenu(true);
     }
@@ -980,6 +982,7 @@ const Viewer = (props: ViewerProps) => {
     <>
       {htmlBook && !isReadingAid ? (
         <PopupMenu
+          onAskAi={props.onAskAi}
           {...({
             rendition: htmlBook.rendition,
             rect: state.rect,
