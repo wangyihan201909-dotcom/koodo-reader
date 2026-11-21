@@ -6,7 +6,25 @@ vi.mock("../../utils/reader/docUtil", () => ({
 
 vi.mock("../../utils/storage/databaseService", () => ({
   default: {
-    getAllRecords: vi.fn(async () => []),
+    getAllRecords: vi.fn(async (db: string) => {
+      if (db === "books") {
+        return [{ key: "book-1", name: "無何有海上誌異" }];
+      }
+      if (db === "notes") {
+        return [
+          {
+            key: "1700000000000",
+            bookKey: "book-1",
+            chapter: "代自序：洞與碎片",
+            text: "天空恆常有一個洞",
+            notes: "这里把洞和记忆联系在一起",
+            cfi: JSON.stringify({ chapterDocIndex: 0 }),
+            tag: ["隐喻"],
+          },
+        ];
+      }
+      return [];
+    }),
   },
 }));
 
@@ -91,6 +109,23 @@ describe("bookTools", () => {
           chapterDocIndex: 4,
           cfi: "/6/8",
         }),
+      },
+    ]);
+  });
+
+  it("searches Koodo reading notes across all books via search_reading_notes", async () => {
+    const result = await executeBookToolCall(null, null, "search_reading_notes", {
+      query: "记忆",
+    });
+    expect(result.ok).toBe(true);
+    expect(result.data).toEqual([
+      {
+        bookKey: "book-1",
+        bookTitle: "無何有海上誌異",
+        chapter: "代自序：洞與碎片",
+        text: "天空恆常有一個洞",
+        notes: "这里把洞和记忆联系在一起",
+        position: JSON.stringify({ chapterDocIndex: 0 }),
       },
     ]);
   });

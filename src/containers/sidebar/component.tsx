@@ -234,6 +234,8 @@ const Sidebar = () => {
   const renderSideMenu = () => {
     return sideMenu.map((item) => {
       if (item.mode === "research" && !window.electronAPI) return null;
+      if ((item.mode === "note" || item.mode === "highlight") && window.electronAPI)
+        return null;
       const isDropTarget = isBookDropTarget(item.mode);
       return (
         <li

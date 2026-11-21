@@ -185,24 +185,35 @@ export async function executeBookToolCall(
     }
   }
 
-  if (toolName === "get_book_highlights_and_notes") {
+  if (
+    toolName === "get_book_highlights_and_notes" ||
+    toolName === "search_reading_notes"
+  ) {
     const bookKey =
       (typeof args.bookKey === "string" && args.bookKey.trim()) || book?.key || "";
     const query = typeof args.query === "string" ? args.query.trim().toLowerCase() : "";
-    if (!bookKey) {
-      return { ok: true, data: [] };
-    }
     try {
       const allNotes: Note[] = (await DatabaseService.getAllRecords("notes")) || [];
+      const bookNames = new Map<string, string>();
+      if (!bookKey) {
+        const allBooks: Book[] = (await DatabaseService.getAllRecords("books")) || [];
+        for (const item of allBooks) {
+          if (item?.key && item?.name) bookNames.set(item.key, item.name);
+        }
+      }
       const matched = allNotes
-        .filter((item) => item && item.bookKey === bookKey)
+        .filter((item) => item && (!bookKey || item.bookKey === bookKey))
         .filter((item) => {
           if (!query) return true;
-          const haystack = `${item.chapter || ""} ${item.text || ""} ${item.notes || ""}`.toLowerCase();
+          const title = bookNames.get(item.bookKey) || "";
+          const tags = Array.isArray(item.tag) ? item.tag.join(" ") : "";
+          const haystack = `${title} ${item.chapter || ""} ${item.text || ""} ${item.notes || ""} ${tags}`.toLowerCase();
           return haystack.includes(query);
         })
         .slice(0, 12)
         .map((item) => ({
+          bookKey: item.bookKey,
+          bookTitle: bookNames.get(item.bookKey) || book?.name || "",
           chapter: item.chapter || "",
           text: (item.text || "").slice(0, 1500),
           notes: (item.notes || "").slice(0, 1500),

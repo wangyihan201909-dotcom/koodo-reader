@@ -520,6 +520,66 @@ function createPiResearchManager(overrides = {}) {
           };
         },
       });
+    } else {
+      tools.push({
+        name: "search_reading_notes",
+        label: "search_reading_notes",
+        description:
+          "Search the user's Koodo reading annotations and highlights across all books in their library.",
+        parameters: {
+          type: "object",
+          properties: {
+            query: {
+              type: "string",
+              description: "Optional keyword to filter reading annotations, highlights, chapters, or book titles",
+            },
+          },
+        },
+        async execute(_toolCallId, params, signal) {
+          const query = typeof params?.query === "string" ? params.query.trim() : "";
+          const res = await invokeRendererTool(
+            session.webContents,
+            "search_reading_notes",
+            { query },
+            signal
+          );
+          if (!res.ok || !Array.isArray(res.data)) {
+            return {
+              content: [{ type: "text", text: "Could not search reading annotations." }],
+              details: { count: 0 },
+              isError: true,
+            };
+          }
+          if (res.data.length === 0) {
+            return {
+              content: [{ type: "text", text: query ? `No reading annotations matched "${query}".` : "No reading annotations found yet." }],
+              details: { count: 0, summary: query },
+            };
+          }
+          const lines = [];
+          for (const item of res.data.slice(0, 10)) {
+            const body = item.notes
+              ? `Highlight: ${item.text}\nUser note: ${item.notes}`
+              : item.text;
+            const num = session.sources.add({
+              kind: "book",
+              book_key: item.bookKey || undefined,
+              title: item.bookTitle || "Reading Note",
+              chapter: item.chapter || undefined,
+              position: item.position || undefined,
+              content: body,
+            });
+            if (num !== null) {
+              lines.push(`[${num}] 《${item.bookTitle || "Book"}》${item.chapter ? ` · ${item.chapter}` : ""}\n${body}`);
+            }
+          }
+          emitSources();
+          return {
+            content: [{ type: "text", text: lines.join("\n\n") }],
+            details: { count: lines.length, summary: query },
+          };
+        },
+      });
     }
 
     tools.push({

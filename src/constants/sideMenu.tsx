@@ -11,6 +11,11 @@ export const sideMenu = [
   },
 
   {
+    name: "Research.workspace",
+    icon: "idea-line",
+    mode: "research",
+  },
+  {
     name: "Notes",
     icon: "idea-line",
     mode: "note",
@@ -19,11 +24,6 @@ export const sideMenu = [
     name: "Highlights",
     icon: "highlight-line",
     mode: "highlight",
-  },
-  {
-    name: "Research.workspace",
-    icon: "search",
-    mode: "research",
   },
   {
     name: "Deleted Books",

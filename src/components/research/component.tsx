@@ -186,6 +186,7 @@ export default function ResearchForm({
   onSaved,
   onOpenBookSource,
   onOpenNoteSource,
+  initialPrompt = "",
   compact = false,
 }: {
   selection?: ResearchSource;
@@ -195,6 +196,7 @@ export default function ResearchForm({
   onSaved?: (note: ResearchNote) => void;
   onOpenBookSource?: (source: ResearchSource) => void;
   onOpenNoteSource?: (noteId: string) => void;
+  initialPrompt?: string;
   compact?: boolean;
 }) {
   const { t, i18n } = useTranslation();
@@ -203,7 +205,7 @@ export default function ResearchForm({
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(initialPrompt);
   const [allowWeb, setAllowWeb] = useState(true);
   const [turns, setTurns] = useState<AgentChatTurn[]>([]);
   const [topics, setTopics] = useState<ResearchTopic[]>([]);

@@ -138,9 +138,25 @@ def bearer(key):
     return {"Authorization": f"Bearer {key}"} if key else {}
 
 
+WIKI_USER_AGENT = (
+    "KoodoLocalReader/1.0 "
+    "(https://github.com/wangyihan201909-dotcom/koodo-reader) httpx/0.28"
+)
+
+
+def make_http_client(url: str, timeout: float = 70):
+    host = (urlsplit(url).hostname or "").lower()
+    if host in {"127.0.0.1", "localhost", "::1"}:
+        return httpx.AsyncClient(timeout=timeout, trust_env=False)
+    try:
+        return httpx.AsyncClient(timeout=timeout, trust_env=True)
+    except ImportError:
+        return httpx.AsyncClient(timeout=timeout, trust_env=False)
+
+
 async def provider(code, method, url, **kwargs):
     try:
-        async with httpx.AsyncClient(timeout=70, trust_env=False) as client:
+        async with make_http_client(url, timeout=70) as client:
             response = await client.request(method, url, **kwargs)
             response.raise_for_status()
             data = response.json()
@@ -230,68 +246,133 @@ def structured(text):
         return {}
 
 
-async def wikipedia_search(question: str):
-    lang = "zh" if re.search(r"[\u4e00-\u9fff]", question) else "en"
+async def wikipedia_query_lang(client: httpx.AsyncClient, lang: str, question: str):
     api_url = f"https://{lang}.wikipedia.org/w/api.php"
-    try:
+    response = await client.get(
+        api_url,
+        headers={"User-Agent": WIKI_USER_AGENT},
+        params={
+            "action": "query",
+            "list": "search",
+            "srsearch": question[:300],
+            "srlimit": 5,
+            "utf8": "1",
+            "format": "json",
+        },
+    )
+    response.raise_for_status()
+    rows = response.json().get("query", {}).get("search", [])[:5]
+    if not rows:
+        return []
+    page_ids = [str(row["pageid"]) for row in rows[:3] if row.get("pageid")]
+    extracts = {}
+    if page_ids:
         try:
-            client = httpx.AsyncClient(timeout=15)
-        except ImportError:
-            client = httpx.AsyncClient(timeout=15, trust_env=False)
-        async with client:
-            response = await client.get(
+            detail = await client.get(
                 api_url,
-                headers={"User-Agent": "KoodoLocalReader/1.0 (local research assistant)"},
+                headers={"User-Agent": WIKI_USER_AGENT},
                 params={
                     "action": "query",
-                    "list": "search",
-                    "srsearch": question[:300],
-                    "srlimit": 6,
+                    "prop": "extracts",
+                    "exintro": "1",
+                    "explaintext": "1",
+                    "exchars": "1400",
+                    "pageids": "|".join(page_ids),
                     "utf8": "1",
                     "format": "json",
                 },
             )
-            response.raise_for_status()
-            data = response.json()
-    except (httpx.HTTPError, ValueError, RuntimeError) as error:
-        raise HTTPException(503, "WEB_NOT_CONFIGURED") from error
+            detail.raise_for_status()
+            pages = detail.json().get("query", {}).get("pages", {})
+            for pid, page in pages.items():
+                text = str(page.get("extract") or "").strip()
+                if text:
+                    extracts[str(pid)] = text
+        except (httpx.HTTPError, ValueError):
+            pass
     results = []
-    for row in data.get("query", {}).get("search", [])[:6]:
+    for row in rows:
         title = str(row.get("title") or "").strip()
+        pid = str(row.get("pageid") or "")
         snippet = html.unescape(re.sub(r"<[^>]+>", "", str(row.get("snippet") or ""))).strip()
-        if title and snippet:
+        content = extracts.get(pid) or snippet
+        if title and content:
             results.append(
                 Source(
                     kind="web",
                     title=title[:300],
                     url=f"https://{lang}.wikipedia.org/wiki/{quote(title.replace(' ', '_'))}",
-                    content=snippet[:12000],
+                    content=content[:12000],
                 )
             )
     return results
+
+
+async def wikipedia_search(question: str):
+    primary = "zh" if re.search(r"[\u4e00-\u9fff]", question) else "en"
+    secondary = "en" if primary == "zh" else "zh"
+    try:
+        async with make_http_client(f"https://{primary}.wikipedia.org/w/api.php", timeout=15) as client:
+            results = await wikipedia_query_lang(client, primary, question)
+            if not results:
+                results = await wikipedia_query_lang(client, secondary, question)
+            return results
+    except (httpx.HTTPError, ValueError, RuntimeError) as error:
+        raise HTTPException(502, "WEB_FAILED") from error
+
+
+async def tavily_search(question: str, api_key: str):
+    data = await provider(
+        "WEB",
+        "POST",
+        "https://api.tavily.com/search",
+        json={
+            "api_key": api_key,
+            "query": question[:400],
+            "max_results": 6,
+            "search_depth": "basic",
+        },
+    )
+    try:
+        return [
+            Source(
+                kind="web",
+                title=str(row.get("title") or row.get("url") or "Web result")[:300],
+                url=row["url"],
+                content=str(row.get("content") or "")[:12000],
+            )
+            for row in data.get("results", [])[:8]
+            if str(row.get("content") or "").strip()
+            and urlsplit(str(row.get("url") or "")).scheme in {"http", "https"}
+        ]
+    except (AttributeError, KeyError, TypeError, ValueError) as error:
+        raise HTTPException(502, "WEB_FAILED") from error
 
 
 async def retrieve(question, mode):
     if mode == "selection":
         return [], False
     if mode == "web":
-        key = setting("KOODO_BRAVE_API_KEY")
-        if not key:
-            return await wikipedia_search(question), False
-        data = await provider(
-            "WEB", "GET", "https://api.search.brave.com/res/v1/web/search",
-            headers={"X-Subscription-Token": key},
-            params={"q": question[:400], "count": 8, "text_decorations": "false"},
-        )
-        try:
-            return [
-                Source(kind="web", title=row["title"][:300], url=row["url"],
-                       content=row["description"][:12000])
-                for row in data.get("web", {}).get("results", [])[:8]
-                if row.get("description", "").strip() and urlsplit(row["url"]).scheme in {"http", "https"}
-            ], False
-        except (AttributeError, KeyError, TypeError, ValueError) as error:
-            raise HTTPException(502, "WEB_FAILED") from error
+        brave_key = setting("KOODO_BRAVE_API_KEY")
+        if brave_key:
+            data = await provider(
+                "WEB", "GET", "https://api.search.brave.com/res/v1/web/search",
+                headers={"X-Subscription-Token": brave_key},
+                params={"q": question[:400], "count": 8, "text_decorations": "false"},
+            )
+            try:
+                return [
+                    Source(kind="web", title=row["title"][:300], url=row["url"],
+                           content=row["description"][:12000])
+                    for row in data.get("web", {}).get("results", [])[:8]
+                    if row.get("description", "").strip() and urlsplit(row["url"]).scheme in {"http", "https"}
+                ], False
+            except (AttributeError, KeyError, TypeError, ValueError) as error:
+                raise HTTPException(502, "WEB_FAILED") from error
+        tavily_key = setting("KOODO_TAVILY_API_KEY")
+        if tavily_key:
+            return await tavily_search(question, tavily_key), False
+        return await wikipedia_search(question), False
 
     base, headers = sag_request()
     rerank = mode == "rerank"
@@ -342,7 +423,7 @@ async def status(query: StatusQuery | None = None):
             sag_error = error.detail
     return {
         "model": resolve_model(query.answer_model if query else None) is not None,
-        "web": bool(setting("KOODO_BRAVE_API_KEY")),
+        "web": bool(setting("KOODO_BRAVE_API_KEY") or setting("KOODO_TAVILY_API_KEY")),
         "sag": bool(setting("KOODO_SAG_API_KEY")) and sag_error is None,
         "sag_error": sag_error,
         "reranker": reranker_available(),
